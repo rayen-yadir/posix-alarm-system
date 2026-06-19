@@ -1,0 +1,15 @@
+# Fichiers compilés
+daemon/alarm_daemon
+monitor/alarm_logger
+cli/alarm_ctl
+
+# Objets de compilation
+*.o
+*.a
+
+# Système
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/

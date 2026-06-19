@@ -1,0 +1,15 @@
+[Unit]
+Description=Démon d'alarme GPIO multi-thread
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/alarm_daemon
+ExecStartPost=/bin/sleep 1
+Restart=on-failure
+RestartSec=5
+SupplementaryGroups=gpio
+User=root
+
+[Install]
+WantedBy=multi-user.target

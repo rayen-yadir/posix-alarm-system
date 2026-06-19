@@ -1,0 +1,14 @@
+[Unit]
+Description=Logger d'alarme (lecture SHM)
+After=alarm-daemon.service
+Requires=alarm-daemon.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/alarm_logger
+Restart=on-failure
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target
