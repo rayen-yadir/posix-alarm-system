@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pthread -D_GNU_SOURCE
-LDFLAGS = -lpthread -lrt
+LDFLAGS = -lpthread -lrt -lgpiod
 
 TARGET = alarm_daemon
 SRC = alarm_daemon.c
