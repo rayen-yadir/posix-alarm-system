@@ -14,11 +14,11 @@
 #include <gpiod.h>
 #include "../common/alarm_common.h"
 
-/* libgpiod handles */
+/* libgpiod v2 handles */
 static struct gpiod_chip *chip;
-static struct gpiod_line *line_button;
-static struct gpiod_line *line_led;
-static struct gpiod_line *line_buzzer;
+static struct gpiod_line_request *req_button;
+static struct gpiod_line_request *req_led;
+static struct gpiod_line_request *req_buzzer;
 
 static alarm_shared_data_t *shared_data;
 static sem_t *shm_semaphore;
@@ -29,83 +29,135 @@ static int event_pending = 0;
 
 static volatile int running = 1;
 
-/* --- Fonctions GPIO via libgpiod --- */
+/* --- Fonctions GPIO via libgpiod v2 --- */
 
 static int gpio_init_all(void)
 {
-    chip = gpiod_chip_open_by_name("gpiochip0");
+    struct gpiod_request_config *rcfg = NULL;
+    struct gpiod_line_config *lcfg = NULL;
+    struct gpiod_line_settings *settings = NULL;
+
+    chip = gpiod_chip_open("/dev/gpiochip0");
     if (!chip) {
-        syslog(LOG_ERR, "Impossible d'ouvrir gpiochip0: %s", strerror(errno));
+        syslog(LOG_ERR, "Impossible d'ouvrir /dev/gpiochip0: %s", strerror(errno));
         return -1;
     }
 
-    /* Bouton : entree */
-    line_button = gpiod_chip_get_line(chip, GPIO_BUTTON_PIN);
-    if (!line_button) {
-        syslog(LOG_ERR, "Impossible d'obtenir GPIO%d", GPIO_BUTTON_PIN);
-        return -1;
-    }
-    if (gpiod_line_request_input_flags(line_button, "alarm_daemon",
-                                        GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP) < 0) {
+    /* --- Bouton : entree avec pull-up --- */
+    settings = gpiod_line_settings_new();
+    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_INPUT);
+    gpiod_line_settings_set_bias(settings, GPIOD_LINE_BIAS_PULL_UP);
+
+    lcfg = gpiod_line_config_new();
+    unsigned int btn_offset = GPIO_BUTTON_PIN;
+    gpiod_line_config_add_line_settings(lcfg, &btn_offset, 1, settings);
+
+    rcfg = gpiod_request_config_new();
+    gpiod_request_config_set_consumer(rcfg, "alarm_button");
+
+    req_button = gpiod_chip_request_lines(chip, rcfg, lcfg);
+
+    gpiod_line_settings_free(settings);
+    gpiod_line_config_free(lcfg);
+    gpiod_request_config_free(rcfg);
+
+    if (!req_button) {
         syslog(LOG_ERR, "Impossible de configurer GPIO%d en entree", GPIO_BUTTON_PIN);
         return -1;
     }
 
-    /* LED : sortie */
-    line_led = gpiod_chip_get_line(chip, GPIO_LED_PIN);
-    if (!line_led) {
-        syslog(LOG_ERR, "Impossible d'obtenir GPIO%d", GPIO_LED_PIN);
-        return -1;
-    }
-    if (gpiod_line_request_output(line_led, "alarm_daemon", 0) < 0) {
+    /* --- LED : sortie --- */
+    settings = gpiod_line_settings_new();
+    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_OUTPUT);
+    gpiod_line_settings_set_output_value(settings, GPIOD_LINE_VALUE_INACTIVE);
+
+    lcfg = gpiod_line_config_new();
+    unsigned int led_offset = GPIO_LED_PIN;
+    gpiod_line_config_add_line_settings(lcfg, &led_offset, 1, settings);
+
+    rcfg = gpiod_request_config_new();
+    gpiod_request_config_set_consumer(rcfg, "alarm_led");
+
+    req_led = gpiod_chip_request_lines(chip, rcfg, lcfg);
+
+    gpiod_line_settings_free(settings);
+    gpiod_line_config_free(lcfg);
+    gpiod_request_config_free(rcfg);
+
+    if (!req_led) {
         syslog(LOG_ERR, "Impossible de configurer GPIO%d en sortie", GPIO_LED_PIN);
         return -1;
     }
 
-    /* Buzzer : sortie */
-    line_buzzer = gpiod_chip_get_line(chip, GPIO_BUZZER_PIN);
-    if (!line_buzzer) {
-        syslog(LOG_ERR, "Impossible d'obtenir GPIO%d", GPIO_BUZZER_PIN);
-        return -1;
-    }
-    if (gpiod_line_request_output(line_buzzer, "alarm_daemon", 0) < 0) {
+    /* --- Buzzer : sortie --- */
+    settings = gpiod_line_settings_new();
+    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_OUTPUT);
+    gpiod_line_settings_set_output_value(settings, GPIOD_LINE_VALUE_INACTIVE);
+
+    lcfg = gpiod_line_config_new();
+    unsigned int buz_offset = GPIO_BUZZER_PIN;
+    gpiod_line_config_add_line_settings(lcfg, &buz_offset, 1, settings);
+
+    rcfg = gpiod_request_config_new();
+    gpiod_request_config_set_consumer(rcfg, "alarm_buzzer");
+
+    req_buzzer = gpiod_chip_request_lines(chip, rcfg, lcfg);
+
+    gpiod_line_settings_free(settings);
+    gpiod_line_config_free(lcfg);
+    gpiod_request_config_free(rcfg);
+
+    if (!req_buzzer) {
         syslog(LOG_ERR, "Impossible de configurer GPIO%d en sortie", GPIO_BUZZER_PIN);
         return -1;
     }
 
-    syslog(LOG_INFO, "GPIO initialises avec libgpiod (gpiochip0)");
+    syslog(LOG_INFO, "GPIO initialises avec libgpiod v2 (/dev/gpiochip0)");
     return 0;
 }
 
 static void gpio_write_led(int value)
 {
-    gpiod_line_set_value(line_led, value);
+    unsigned int offset = GPIO_LED_PIN;
+    enum gpiod_line_value val = value ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE;
+    gpiod_line_request_set_value(req_led, offset, val);
 }
 
 static void gpio_write_buzzer(int value)
 {
-    gpiod_line_set_value(line_buzzer, value);
+    unsigned int offset = GPIO_BUZZER_PIN;
+    enum gpiod_line_value val = value ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE;
+    gpiod_line_request_set_value(req_buzzer, offset, val);
+}
+
+static int gpio_read_button(void)
+{
+    unsigned int offset = GPIO_BUTTON_PIN;
+    return gpiod_line_request_get_value(req_button, offset);
 }
 
 /* --- Thread 1 : Surveillance du bouton GPIO --- */
 
 static void *thread_gpio_monitor(void *arg)
 {
+    (void)arg;
     syslog(LOG_INFO, "Thread GPIO monitor demarre (pin %d)", GPIO_BUTTON_PIN);
 
-    int last_value = gpiod_line_get_value(line_button);
+    int last_value = gpio_read_button();
 
     while (running) {
         usleep(50000); /* poll toutes les 50ms */
 
-        int value = gpiod_line_get_value(line_button);
+        int value = gpio_read_button();
         if (value < 0) {
             syslog(LOG_ERR, "Erreur lecture GPIO bouton");
             continue;
         }
 
-        /* Detection front descendant (bouton appuye = 0 avec pull-up) */
-        if (last_value == 1 && value == 0) {
+        /* Detection front descendant (bouton appuye = INACTIVE avec pull-up) */
+        if (last_value == GPIOD_LINE_VALUE_ACTIVE &&
+            value == GPIOD_LINE_VALUE_INACTIVE) {
+
             syslog(LOG_INFO, "Bouton appuye detecte !");
 
             sem_wait(shm_semaphore);
@@ -133,6 +185,7 @@ static void *thread_gpio_monitor(void *arg)
 
 static void *thread_actuator(void *arg)
 {
+    (void)arg;
     syslog(LOG_INFO, "Thread actionneur demarre");
 
     while (running) {
@@ -187,6 +240,8 @@ static void *thread_actuator(void *arg)
 
 static void *thread_control_listener(void *arg)
 {
+    (void)arg;
+
     if (mkfifo(CTL_FIFO_PATH, 0666) < 0 && errno != EEXIST) {
         syslog(LOG_ERR, "mkfifo echoue: %s", strerror(errno));
         return NULL;
@@ -297,10 +352,10 @@ static int shm_init(void)
 
 static void gpio_cleanup(void)
 {
-    if (line_button) gpiod_line_release(line_button);
-    if (line_led)    gpiod_line_release(line_led);
-    if (line_buzzer) gpiod_line_release(line_buzzer);
-    if (chip)        gpiod_chip_close(chip);
+    if (req_button) gpiod_line_request_release(req_button);
+    if (req_led)    gpiod_line_request_release(req_led);
+    if (req_buzzer) gpiod_line_request_release(req_buzzer);
+    if (chip)       gpiod_chip_close(chip);
 }
 
 /* --- Main --- */
@@ -325,13 +380,13 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    pthread_create(&tid_gpio,    NULL, thread_gpio_monitor,    NULL);
-    pthread_create(&tid_actuator, NULL, thread_actuator,       NULL);
+    pthread_create(&tid_gpio,     NULL, thread_gpio_monitor,     NULL);
+    pthread_create(&tid_actuator, NULL, thread_actuator,         NULL);
     pthread_create(&tid_control,  NULL, thread_control_listener, NULL);
 
     syslog(LOG_INFO, "Demon pret - etat initial: DISARMED");
 
-    pthread_join(tid_gpio,    NULL);
+    pthread_join(tid_gpio,     NULL);
     pthread_join(tid_actuator, NULL);
     pthread_join(tid_control,  NULL);
 
