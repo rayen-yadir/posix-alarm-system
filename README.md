@@ -4,6 +4,9 @@
 > pthreads, GPIO et systemd — testé sur **Raspberry Pi (kernel 6.12, Raspberry Pi OS Trixie)**.
 
 **Auteur :** Rayen Yadir
+## Démonstration vidéo
+
+https://github.com/rayen-yadir/posix-alarm-system/Video/Test_systeme.mp4
 
 ---
 
