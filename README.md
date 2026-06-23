@@ -11,19 +11,19 @@
 
 ### 1. Système complet en fonctionnement — 3 processus, logs en temps réel
 
-![Système complet](docs/screenshots/full_system_logs.png)
+![Système complet](screenshots/full_system_logs.png)
 
 *Logs du daemon (gauche) : bouton détecté → alarme déclenchée → état TRIGGERED → retour ARMED*
 
 ### 2. Status après armement (avant déclenchement)
 
-![Status armé](docs/screenshots/status_armed.png)
+![Status armé](screenshots/status_armed.png)
 
 *`alarm_ctl status` affiche : ARMED, 0 déclenchement*
 
 ### 3. Status après déclenchement
 
-![Status après déclenchement](docs/screenshots/status_after_trigger.png)
+![Status après déclenchement](screenshots/status_after_trigger.png)
 
 *`alarm_ctl status` affiche : ARMED, 1 déclenchement, date/heure exacte*
 
