@@ -9,17 +9,32 @@
 
 ## Démonstration réelle sur Raspberry Pi
 
-### Système complet en fonctionnement — 3 processus, logs en temps réel
+### 1. Système complet en fonctionnement — 3 processus, logs en temps réel
 
+<<<<<<< HEAD
 ![Système complet](screenshots/full_system_logs.png)
+=======
+
+<img width="1193" height="882" alt="full_system_logs" src="https://github.com/user-attachments/assets/578a8025-6ef0-489e-8ded-5330e11268c1" />
+>>>>>>> 4cabb5233c2c07db4f0ea119a7ff72c98e236124
 
 *Logs du daemon (gauche) : bouton détecté → alarme déclenchée → état TRIGGERED → retour ARMED*
 
-### Status après armement et déclenchement
+### 2. Status après armement (avant déclenchement)
+
+<<<<<<< HEAD
+![Status après déclenchement](screenshots/status_after_trigger.png)
+=======
+![Status armé](screenshots/status_armed.png)
+>>>>>>> 4cabb5233c2c07db4f0ea119a7ff72c98e236124
+
+*`alarm_ctl status` affiche : ARMED, 0 déclenchement*
+
+### 3. Status après déclenchement
 
 ![Status après déclenchement](screenshots/status_after_trigger.png)
 
-*`alarm_ctl status` affiche : ARMED, 1 déclenchement, date/heure du dernier déclenchement*
+*`alarm_ctl status` affiche : ARMED, 1 déclenchement, date/heure exacte*
 
 ---
 
