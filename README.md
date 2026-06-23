@@ -21,7 +21,7 @@
 ### 2. Status après armement (avant déclenchement)
 
 
-![Status après déclenchement](screenshots/status_after_trigger.png)
+
 
 ![Status armé](screenshots/status_armed.png)
 
