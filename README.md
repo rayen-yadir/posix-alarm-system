@@ -11,7 +11,8 @@
 
 ### 1. Système complet en fonctionnement — 3 processus, logs en temps réel
 
-![Système complet](screenshots/full_system_logs.png)
+
+<img width="1193" height="882" alt="full_system_logs" src="https://github.com/user-attachments/assets/578a8025-6ef0-489e-8ded-5330e11268c1" />
 
 *Logs du daemon (gauche) : bouton détecté → alarme déclenchée → état TRIGGERED → retour ARMED*
 
