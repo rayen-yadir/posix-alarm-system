@@ -1,7 +1,25 @@
 # POSIX Alarm System — Multi-process GPIO & IPC on Linux
 
 > Système d'alarme embarqué multi-processus utilisant IPC POSIX,
-> pthreads, GPIO sysfs et systemd sur Raspberry Pi / Linux.
+> pthreads, GPIO et systemd — testé sur **Raspberry Pi (kernel 6.12, Raspberry Pi OS Trixie)**.
+
+**Auteur :** Rayen Yadir
+
+---
+
+## Démonstration réelle sur Raspberry Pi
+
+### Système complet en fonctionnement — 3 processus, logs en temps réel
+
+![Système complet](docs/screenshots/full_system_logs.png)
+
+*Logs du daemon (gauche) : bouton détecté → alarme déclenchée → état TRIGGERED → retour ARMED*
+
+### Status après armement et déclenchement
+
+![Status après déclenchement](docs/screenshots/status_after_trigger.png)
+
+*`alarm_ctl status` affiche : ARMED, 1 déclenchement, date/heure du dernier déclenchement*
 
 ---
 
@@ -9,58 +27,43 @@
 
 - [Architecture](#architecture)
 - [Technologies](#technologies)
-- [Prérequis](#prérequis)
+- [Hardware](#hardware)
 - [Installation et exécution](#installation-et-exécution)
 - [Résultat attendu](#résultat-attendu)
-- [Auteur](#auteur)
 
 ---
 
 ## Architecture
+
+```
 posix-alarm-system/
-
 ├── common/
-
-│   └── alarm_common.h             # Définitions partagées (IPC, structures)
-
+│   └── alarm_common.h              # Définitions partagées (IPC, structures)
 ├── daemon/
-
-│   ├── alarm_daemon.c             # Processus principal multi-thread
-
+│   ├── alarm_daemon.c              # Processus principal multi-thread
 │   └── Makefile
-
 ├── monitor/
-
-│   ├── alarm_logger.c             # Processus de journalisation (SHM)
-
+│   ├── alarm_logger.c              # Processus de journalisation (SHM)
 │   └── Makefile
-
 ├── cli/
-
-│   ├── alarm_ctl.c                # Outil CLI de contrôle
-
+│   ├── alarm_ctl.c                 # Outil CLI de contrôle
 │   └── Makefile
-
 └── scripts/
-
-├── alarm-daemon.service       # Service systemd daemon
-
-├── alarm-logger.service       # Service systemd logger
-
-└── install.sh                 # Script d'installation
+    ├── alarm-daemon.service        # Service systemd daemon
+    ├── alarm-logger.service        # Service systemd logger
+    └── install.sh                  # Script d'installation
+```
 
 ### Schéma de communication
+
+```
 alarm_ctl ──[FIFO]──▶ alarm_daemon ──[SHM + sémaphore]──▶ alarm_logger
-
-│
-
-┌──────┴──────┐
-
-│             │
-
-Thread GPIO   Thread Actionneur
-
-(poll() IRQ)  (LED + Buzzer)
+                           │
+                    ┌──────┴──────┐
+                    │             │
+               Thread GPIO   Thread Actionneur
+               (libgpiod v2)  (LED + Buzzer)
+```
 
 ---
 
@@ -71,64 +74,84 @@ Thread GPIO   Thread Actionneur
 | **IPC POSIX** | Mémoire partagée (`shm_open`/`mmap`), FIFO nommés (`mkfifo`) |
 | **Synchronisation** | Sémaphores POSIX nommés (`sem_open`), mutex, condition variables |
 | **Threads** | pthreads, pattern producteur/consommateur, `pthread_cond_timedwait` |
-| **GPIO** | Détection par `poll()` sur sysfs (pas de polling actif) |
+| **GPIO** | libgpiod v2 (`gpiod_chip_open`, `gpiod_line_request_*`) |
 | **Signaux Unix** | `SIGTERM`/`SIGINT`, arrêt coordonné multi-thread |
 | **systemd** | Services avec dépendances (`Requires=`), restart automatique |
+| **Plateforme** | Raspberry Pi — kernel 6.12, Raspberry Pi OS Trixie (Debian 13) |
 | **Langage** | C (POSIX) |
+
+> **Note kernel 6.12** : Le kernel 6.12 a supprimé l'accès GPIO via sysfs.
+> Ce projet utilise **libgpiod v2** (API moderne recommandée) à la place de l'ancienne interface `/sys/class/gpio/`.
 
 ---
 
-## Prérequis
+## Hardware
 
-### Hardware
-- Raspberry Pi 3 ou 4
-- Bouton sur **GPIO17**, LED sur **GPIO27**, Buzzer sur **GPIO22**
+### Composants
 
-### Software
-```bash
-sudo apt update
-sudo apt install build-essential
+| Composant | GPIO | Pin physique |
+|---|---|---|
+| Bouton poussoir | GPIO17 | Pin 11 |
+| LED + résistance 220Ω | GPIO27 | Pin 13 |
+| Buzzer actif | GPIO22 | Pin 15 |
+
+### Câblage
+
+```
+Raspberry Pi                    Composants
+──────────────────────────────────────────────
+Pin 11 (GPIO17) ──────────────  Bouton ──── Pin 9  (GND)
+Pin 13 (GPIO27) ──────────────  Résistance 220Ω ── LED ── Pin 14 (GND)
+Pin 15 (GPIO22) ──────────────  Buzzer (+) ──────── Pin 20 (GND)
 ```
 
 ---
 
 ## Installation et exécution
 
-### Option 1 — Script automatique
+### 1. Prérequis
+
 ```bash
-chmod +x scripts/install.sh
-./scripts/install.sh
+sudo apt update
+sudo apt install -y build-essential libgpiod-dev
 ```
 
-### Option 2 — Manuel
+### 2. Cloner et compiler
 
-#### 1. Compiler les 3 composants
 ```bash
-cd daemon/ && make && cd ..
-cd monitor/ && make && cd ..
-cd cli/ && make && cd ..
+git clone https://github.com/rayen-yadir/posix-alarm-system.git
+cd posix-alarm-system
+
+cd daemon && make && cd ..
+cd monitor && make && cd ..
+cd cli && make && cd ..
 ```
 
-#### 2. Tester manuellement
+### 3. Lancer les 3 processus
+
+**Terminal 1 — Daemon principal**
 ```bash
-# Terminal 1 : lancer le daemon
-sudo ./daemon/alarm_daemon
-
-# Terminal 2 : lancer le logger
-sudo ./monitor/alarm_logger
-
-# Terminal 3 : contrôler via CLI
-./cli/alarm_ctl status
-./cli/alarm_ctl arm
-./cli/alarm_ctl status
-./cli/alarm_ctl disarm
+sudo ./daemon/alarm_daemon &
+journalctl -f | grep alarm
 ```
 
-#### 3. Installer avec systemd
+**Terminal 2 — Logger**
 ```bash
-sudo cp daemon/alarm_daemon /usr/local/bin/
-sudo cp monitor/alarm_logger /usr/local/bin/
-sudo cp cli/alarm_ctl /usr/local/bin/
+sudo ./monitor/alarm_logger &
+```
+
+**Terminal 3 — Contrôle CLI**
+```bash
+sudo ./cli/alarm_ctl arm
+sudo ./cli/alarm_ctl status
+# Appuie sur le bouton GPIO17 → LED clignote + buzzer sonne 5s
+sudo ./cli/alarm_ctl status
+sudo ./cli/alarm_ctl disarm
+```
+
+### 4. Installer avec systemd (démarrage automatique au boot)
+
+```bash
 sudo cp scripts/alarm-daemon.service /etc/systemd/system/
 sudo cp scripts/alarm-logger.service /etc/systemd/system/
 sudo systemctl daemon-reload
@@ -141,35 +164,30 @@ sudo systemctl start alarm-daemon.service alarm-logger.service
 ## Résultat attendu
 
 ```bash
-# Vérifier l'état
-$ alarm_ctl status
-État          : DISARMED
-Déclenchements: 0
-LED           : OFF
-Buzzer        : OFF
-
-# Armer le système
-$ alarm_ctl arm
-Commande 'arm' envoyée
-
-# Appuyer sur le bouton GPIO17 -> LED + Buzzer clignotent 5s
-
-# Vérifier après déclenchement
-$ alarm_ctl status
+$ sudo ./cli/alarm_ctl status
 État          : ARMED
 Déclenchements: 1
-Dernier décl. : Sat Jan 12 14:23:01 2025
+LED           : OFF
+Buzzer        : OFF
+Dernier décl. : Tue Jun 23 20:56:58 2026
+```
 
-# Logs en temps réel
-$ journalctl -u alarm-daemon -f
-Jan 12 14:23:01 raspberrypi alarm_daemon[1234]: Bouton appuyé détecté !
-Jan 12 14:23:01 raspberrypi alarm_daemon[1234]: Activation de l'alarme (LED + buzzer)
+Logs en temps réel :
+```
+alarm_daemon: GPIO initialises avec libgpiod v2 (/dev/gpiochip0)
+alarm_daemon: Thread GPIO monitor demarre (pin 17)
+alarm_daemon: Demon pret - etat initial: DISARMED
+alarm_daemon: Bouton appuye detecte !
+alarm_daemon: Activation de l'alarme (LED + buzzer)
+alarm_logger: Changement d'etat: ARMED -> TRIGGERED
+alarm_logger: Declenchement #1 detecte
+alarm_logger: Changement d'etat: TRIGGERED -> ARMED
 ```
 
 ---
 
 ## Auteur
 
-**Rayen** — Ingénieur Linux Embarqué / BSP
+**Rayen Yadir** — Ingénieur Linux Embarqué / BSP
 
-[![GitHub](https://img.shields.io/badge/GitHub-profil-black?logo=github)](https://github.com/rayen-yadir)
+[![GitHub](https://img.shields.io/badge/GitHub-rayen--yadir-black?logo=github)](https://github.com/rayen-yadir)
