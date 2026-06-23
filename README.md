@@ -18,7 +18,7 @@
 
 ### Status après armement et déclenchement
 
-![Status après déclenchement](docs/screenshots/status_after_trigger.png)
+![Status après déclenchement](screenshots/status_after_trigger.png)
 
 *`alarm_ctl status` affiche : ARMED, 1 déclenchement, date/heure du dernier déclenchement*
 
