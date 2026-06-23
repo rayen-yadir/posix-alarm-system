@@ -11,9 +11,7 @@
 
 ### 1. Système complet en fonctionnement — 3 processus, logs en temps réel
 
-<<<<<<< HEAD
-![Système complet](screenshots/full_system_logs.png)
-=======
+
 
 <img width="1193" height="882" alt="full_system_logs" src="https://github.com/user-attachments/assets/578a8025-6ef0-489e-8ded-5330e11268c1" />
 >>>>>>> 4cabb5233c2c07db4f0ea119a7ff72c98e236124
