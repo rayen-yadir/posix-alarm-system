@@ -11,9 +11,9 @@
 
 ### Le problème concret
 
-Tu as déjà vu une alarme de sécurité — un capteur qui détecte quelque chose (une porte qui s'ouvre, un mouvement, de la fumée) et qui déclenche une sirène. Derrière ce comportement simple, il y a un programme qui tourne en permanence, qui surveille, qui réagit, et qui enregistre tout ce qui se passe.
+Tu as déjà vu une alarme de sécurité, un capteur qui détecte quelque chose (une porte qui s'ouvre, un mouvement, de la fumée) et qui déclenche une sirène. Derrière ce comportement simple, il y a un programme qui tourne en permanence, qui surveille, qui réagit, et qui enregistre tout ce qui se passe.
 
-**Ce projet, c'est exactement ça** — mais construit entièrement à la main, en langage C, sur un Raspberry Pi (un mini-ordinateur de la taille d'une carte de crédit).
+**Ce projet, c'est exactement ça, mais construit entièrement à la main, en langage C, sur un Raspberry Pi (un mini-ordinateur de la taille d'une carte de crédit).
 
 ---
 
