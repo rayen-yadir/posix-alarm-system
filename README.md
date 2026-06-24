@@ -4,6 +4,59 @@
 > pthreads, GPIO et systemd — testé sur **Raspberry Pi (kernel 6.12, Raspberry Pi OS Trixie)**.
 
 **Auteur :** Rayen Yadir
+
+---
+
+##  C'est quoi ce projet ?
+
+### Le problème concret
+
+Tu as déjà vu une alarme de sécurité — un capteur qui détecte quelque chose (une porte qui s'ouvre, un mouvement, de la fumée) et qui déclenche une sirène. Derrière ce comportement simple, il y a un programme qui tourne en permanence, qui surveille, qui réagit, et qui enregistre tout ce qui se passe.
+
+**Ce projet, c'est exactement ça** — mais construit entièrement à la main, en langage C, sur un Raspberry Pi (un mini-ordinateur de la taille d'une carte de crédit).
+
+---
+
+### Ce que fait le système concrètement
+
+```
+Tu appuies sur un bouton
+        ↓
+Le système détecte l'appui en moins de 50ms
+        ↓
+La LED clignote + le buzzer sonne pendant 5 secondes
+        ↓
+Tout est enregistré avec la date et l'heure
+        ↓
+Tu peux consulter l'état depuis n'importe quel terminal
+```
+
+---
+
+### Comment c'est organisé
+
+Le système est découpé en **3 programmes indépendants** qui tournent en même temps et communiquent entre eux — comme une équipe où chacun a un rôle précis :
+
+| Programme | Rôle | Analogie |
+|---|---|---|
+| `alarm_daemon` | Surveille le bouton, contrôle la LED et le buzzer | Le gardien de sécurité |
+| `alarm_logger` | Enregistre tout ce qui se passe en temps réel | Le journal de bord |
+| `alarm_ctl` | Permet d'armer, désarmer, consulter l'état | La télécommande |
+
+Ces 3 programmes **se parlent** via des mécanismes internes de Linux — exactement comme le font les systèmes embarqués dans l'automobile, le médical, ou l'industrie.
+
+---
+
+### Pourquoi c'est intéressant techniquement
+
+La plupart des projets embarqués utilisent des frameworks tout faits (Arduino, MicroPython...) qui cachent la complexité. Ici, **tout est fait à la main** :
+
+- Le contrôle des GPIO (les broches physiques du Raspberry Pi) se fait directement via l'API Linux `libgpiod`
+- La communication entre les 3 programmes utilise de la **mémoire partagée** et des **pipes nommés** — des mécanismes bas niveau du noyau Linux
+- Le projet a dû être **adapté au kernel Linux 6.12** qui a supprimé l'ancienne façon d'accéder aux GPIO — ce genre d'adaptation est ce que font les ingénieurs BSP au quotidien dans l'industrie
+
+---
+
 ## Démonstration vidéo
 
 https://github.com/rayen-yadir/posix-alarm-system/Video/Test_systeme.mp4
@@ -14,20 +67,13 @@ https://github.com/rayen-yadir/posix-alarm-system/Video/Test_systeme.mp4
 
 ### 1. Système complet en fonctionnement — 3 processus, logs en temps réel
 
-
-
 <img width="1193" height="882" alt="full_system_logs" src="https://github.com/user-attachments/assets/578a8025-6ef0-489e-8ded-5330e11268c1" />
-
 
 *Logs du daemon (gauche) : bouton détecté → alarme déclenchée → état TRIGGERED → retour ARMED*
 
 ### 2. Status après armement (avant déclenchement)
 
-
-
-
 ![Status armé](screenshots/status_armed.png)
-
 
 *`alarm_ctl status` affiche : ARMED, 0 déclenchement*
 
